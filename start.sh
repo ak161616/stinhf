@@ -20,17 +20,13 @@ if [ -n "$REPO_URL" ] && [ -n "$GITHUB_TOKEN" ]; then
     DATA_DIR="/app/data"
     AUTH_REPO_URL="https://oauth2:${GITHUB_TOKEN}@${REPO_URL}"
     
-    # 核心修正：智能判断并处理所有情况
     if [ -d "$DATA_DIR/.git" ]; then
-        # 如果是已存在的仓库，则更新
         echo "--- [Cloud Save] Existing repository found. Pulling latest changes..."
         cd "$DATA_DIR"
-        git remote set-url origin "$AUTH_REPO_URL" # 确保远程地址正确
+        git remote set-url origin "$AUTH_REPO_URL"
         git fetch origin main
         git reset --hard origin/main
     else
-        # 如果目录不是一个有效的 git 仓库 (无论是首次启动还是失败重启)
-        # 我们都采取最可靠的策略：强制清理并重新克隆
         echo "--- [Cloud Save] Directory is not a valid git repository. Forcing a clean clone..."
         rm -rf "$DATA_DIR"
         git clone "$AUTH_REPO_URL" "$DATA_DIR"
@@ -41,7 +37,6 @@ if [ -n "$REPO_URL" ] && [ -n "$GITHUB_TOKEN" ]; then
     git config user.email "backup@huggingface.space"
     echo "--- [Cloud Save] Git user configured locally."
 
-    # 启动后台自动保存
     (
         while true; do
             sleep "$((${AUTOSAVE_INTERVAL:-30} * 60))"
