@@ -1,7 +1,7 @@
 #!/bin/sh
-# 最终版启动脚本 (V25 - Export Mode & Fault-Tolerant)
+# 最终版启动脚本 (V26 - Live Export Mode)
 set -e
-echo "--- [Launcher V25] Starting..."
+echo "--- [Launcher V26] Starting..."
 
 DATA_DIR="/app/data"
 PUBLIC_DIR="/app/public"
@@ -13,8 +13,13 @@ if [ "$EXPORT_MODE" = "true" ]; then
     echo "!!!             EXPORT MODE ACTIVATED             !!!"
     echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
     
+    # 确保 python3 存在，alpine 镜像通常自带
+    if ! command -v python3 > /dev/null; then
+        echo "--- [Export] python3 not found, attempting to install..."
+        apk add --no-cache python3
+    fi
+    
     echo "--- [Export] Step 1: Compressing data folder ($DATA_DIR)..."
-    # 使用 tar 命令进行打包压缩
     tar -czvf "/tmp/$BACKUP_FILE" -C "$DATA_DIR" .
     
     echo "--- [Export] Step 2: Moving backup file to public directory ($PUBLIC_DIR)..."
@@ -23,14 +28,11 @@ if [ "$EXPORT_MODE" = "true" ]; then
     DOWNLOAD_URL="YOUR_SPACE_URL/$BACKUP_FILE"
     echo "--- [Export] Step 3: EXPORT COMPLETE! ---"
     echo "--- Your data is now ready for download. ---"
-    echo "--- Please go to the following URL in your browser NOW: ---"
-    echo "--- $DOWNLOAD_URL ---"
-    echo "(Replace YOUR_SPACE_URL with your actual Hugging Face Space URL)"
     
-    echo "--- The container will now sleep indefinitely to keep the download link active. ---"
-    # 无限循环等待，保持容器运行
-    while true; do sleep 3600; done
-    exit 0 # 永远不会执行到这里，但作为好习惯
+    # 核心修正：不再睡觉，而是启动一个微型文件服务器
+    echo "--- Starting temporary download server on port 7860... ---"
+    cd "$PUBLIC_DIR"
+    exec python3 -m http.server 7860
 fi
 # ==========================================================
 
@@ -64,5 +66,5 @@ if [ -n "$REPO_URL" ] && [ -n "$GITHUB_TOKEN" ]; then
     cd /app
 fi
 
-echo "--- [Launcher V25] Starting SillyTavern server..."
+echo "--- [Launcher V26] Starting SillyTavern server..."
 exec node server.js
